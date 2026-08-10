@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokémon Card Opening Games</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0d1117, #16213e);
+      color: #e6edf3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+      padding: 30px;
+    }
+    h1 { font-size: 2rem; color: #f0c040; margin-bottom: 8px; }
+    .subtitle { color: #8b949e; margin-bottom: 30px; font-size: 0.9rem; }
+    .game-card {
+      display: block;
+      background: #161b22;
+      border: 2px solid #30363d;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      text-decoration: none;
+      color: #e6edf3;
+      transition: all 0.2s;
+    }
+    .game-card:hover { border-color: #f0c040; transform: translateY(-3px); }
+    .game-card.featured { border-color: #f0c040; box-shadow: 0 0 20px rgba(240,192,64,0.2); }
+    .game-card h2 { font-size: 1.2rem; color: #f0c040; margin-bottom: 6px; }
+    .game-card p { font-size: 0.82rem; color: #8b949e; }
+    .game-card .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 10px;
+      font-size: 0.7rem; font-weight: 700; margin-bottom: 8px;
+    }
+    .badge-featured { background: #f0c040; color: #1a1a2e; }
+    .badge-classic { background: #30363d; color: #e6edf3; }
+    .footer { margin-top: 24px; font-size: 0.7rem; color: #484f58; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ Pokémon Card Pack Opening</h1>
+    <p class="subtitle">A very fun Pokémon card pack opening game — open packs and sell your cards!</p>
+
+    <a href="pokemon-tcg-sim.html" class="game-card featured">
+      <span class="badge badge-featured">⭐ FEATURED</span>
+      <h2>🎴 TCG Pack Simulator + Selling Mode</h2>
+      <p>52 cards, 3 themed sets, 6 rarity tiers, market selling, profit tracking. Inspired by pokemonsim.com.</p>
+    </a>
+
+    <a href="pokemon-packs.html" class="game-card">
+      <span class="badge badge-classic">Classic</span>
+      <h2>📦 Simple Pack Opener</h2>
+      <p>30 Pokémon, 4 rarities, quick & fun pack opening with flip animations.</p>
+    </a>
+
+    <a href="color-split.html" class="game-card">
+      <span class="badge badge-classic">Mini</span>
+      <h2>🎨 Color Split</h2>
+      <p>A fun little color-matching mini-game.</p>
+    </a>
+
+    <p class="footer">Made with ❤️ · <a href="https://github.com/teddy123tse/pokemon-card-opening" style="color:#8b949e;">GitHub</a></p>
+  </div>
+</body>
+</html>
