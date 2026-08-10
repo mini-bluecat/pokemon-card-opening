@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokémon Pack Opener</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      overflow-x: hidden;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app {
+      max-width: 600px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      padding: 16px 20px;
+      text-align: center;
+      border-bottom: 2px solid #f0c040;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header h1 { font-size: 1.5rem; color: #f0c040; letter-spacing: 1px; }
+    .coin-display {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #1a1a2e; border: 2px solid #f0c040; border-radius: 20px;
+      padding: 4px 14px; margin-top: 6px; font-weight: 700; color: #f0c040;
+    }
+    .coin-display .coin-icon { font-size: 1.2rem; }
+
+    /* ===== TABS ===== */
+    .tabs {
+      display: flex; background: #161b22; border-bottom: 1px solid #30363d;
+      position: sticky; top: 96px; z-index: 10;
+    }
+    .tab {
+      flex: 1; padding: 12px; text-align: center; cursor: pointer;
+      font-weight: 600; color: #8b949e; border-bottom: 3px solid transparent;
+      transition: all 0.2s; user-select: none;
+    }
+    .tab:hover { color: #e6edf3; }
+    .tab.active { color: #f0c040; border-bottom-color: #f0c040; }
+
+    /* ===== PANELS ===== */
+    .panel { display: none; flex: 1; padding: 20px; }
+    .panel.active { display: block; }
+
+    /* ===== OPEN PACKS PANEL ===== */
+    .pack-area {
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+      padding-top: 20px;
+    }
+    .pack-art {
+      width: 200px; height: 280px; cursor: pointer; position: relative;
+      transition: transform 0.15s; perspective: 800px;
+    }
+    .pack-art:hover { transform: scale(1.05); }
+    .pack-art:active { transform: scale(0.95); }
+    .pack-art.ripping { animation: packShake 0.4s ease-in-out; pointer-events: none; }
+
+    .pack-sleeve {
+      width: 100%; height: 100%; border-radius: 16px;
+      background: linear-gradient(145deg, #c41e3a, #8b0000);
+      border: 4px solid #f0c040;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(240,192,64,0.3);
+      position: relative; overflow: hidden;
+    }
+    .pack-sleeve::before {
+      content: ''; position: absolute; inset: 8px; border-radius: 10px;
+      border: 2px dashed rgba(240,192,64,0.5);
+    }
+    .pack-sleeve .pokeball {
+      font-size: 3rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .pack-sleeve .pack-label {
+      font-size: 0.85rem; font-weight: 800; color: #f0c040;
+      text-transform: uppercase; letter-spacing: 3px; margin-top: 4px;
+    }
+    .pack-sleeve .pack-sub {
+      font-size: 0.65rem; color: rgba(255,255,255,0.7); letter-spacing: 1px;
+    }
+
+    .btn {
+      padding: 12px 28px; border: none; border-radius: 24px;
+      font-weight: 700; font-size: 0.95rem; cursor: pointer;
+      transition: all 0.2s; letter-spacing: 0.5px;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-bulk {
+      background: transparent; border: 2px solid #f0c040; color: #f0c040;
+    }
+    .btn-bulk:hover:not(:disabled) { background: rgba(240,192,64,0.15); }
+
+    .coins-needed { color: #8b949e; font-size: 0.85rem; }
+
+    /* ===== CARD REVEAL OVERLAY ===== */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 100; display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .overlay.active { display: flex; }
+
+    .card-reveal {
+      width: 240px; height: 336px; perspective: 1000px; position: relative;
+    }
+    .card-inner {
+      width: 100%; height: 100%; position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-inner.flipped { transform: rotateY(180deg); }
+
+    .card-face {
+      position: absolute; inset: 0; border-radius: 14px;
+      backface-visibility: hidden; display: flex;
+      flex-direction: column; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .card-back {
+      background: repeating-linear-gradient(
+        45deg, #1a3a5c, #1a3a5c 8px, #1e4570 8px, #1e4570 16px
+      );
+      border: 4px solid #f0c040;
+    }
+    .card-back .pokeball-back { font-size: 4rem; opacity: 0.8; }
+
+    .card-front {
+      transform: rotateY(180deg);
+      background: linear-gradient(160deg, #1a1a2e, #16213e);
+      border: 4px solid #888;
+      padding: 10px; gap: 6px;
+    }
+    .card-front.rarity-common { border-color: #9ca3af; }
+    .card-front.rarity-uncommon { border-color: #a8c0a8; box-shadow: 0 0 12px rgba(168,192,168,0.4); }
+    .card-front.rarity-rare { border-color: #f0c040; box-shadow: 0 0 20px rgba(240,192,64,0.5); }
+    .card-front.rarity-ultrarare {
+      border-color: transparent;
+      background: linear-gradient(160deg, #1a1a2e, #16213e);
+      box-shadow: 0 0 28px rgba(255,100,255,0.6);
+      animation: rainbowBorder 1.5s linear infinite;
+    }
+    @keyframes rainbowBorder {
+      0% { border-color: #ff6b6b; }
+      25% { border-color: #ffd93d; }
+      50% { border-color: #6bcb77; }
+      75% { border-color: #4d96ff; }
+      100% { border-color: #ff6b6b; }
+    }
+
+    .card-front img { width: 96px; height: 96px; image-rendering: pixelated; }
+    .card-front .card-name { font-weight: 800; font-size: 0.95rem; text-align: center; }
+    .card-front .card-type {
+      font-size: 0.7rem; padding: 2px 10px; border-radius: 10px;
+      font-weight: 600; text-transform: uppercase;
+    }
+    .type-Fire { background: #e25822; color: #fff; }
+    .type-Water { background: #1e90ff; color: #fff; }
+    .type-Grass { background: #3cb371; color: #fff; }
+    .type-Electric { background: #ffd700; color: #333; }
+    .type-Psychic { background: #da70d6; color: #fff; }
+    .type-Normal { background: #a8a8a8; color: #333; }
+
+    .card-front .card-stats { font-size: 0.75rem; color: #8b949e; text-align: center; }
+    .card-front .card-attack { font-size: 0.78rem; font-weight: 600; text-align: center; }
+    .card-front .rarity-badge {
+      font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 2px; padding: 2px 8px; border-radius: 8px;
+    }
+    .badge-common { background: #374151; color: #9ca3af; }
+    .badge-uncommon { background: #2d3a2d; color: #a8c0a8; }
+    .badge-rare { background: #3d3520; color: #f0c040; }
+    .badge-ultrarare {
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+      color: #fff; animation: rainbowBg 2s linear infinite;
+    }
+    @keyframes rainbowBg {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    /* Reveal controls */
+    .reveal-controls { margin-top: 20px; display: flex; gap: 12px; align-items: center; }
+    .btn-reveal {
+      padding: 14px 36px; border: none; border-radius: 24px;
+      font-weight: 800; font-size: 1rem; cursor: pointer;
+      background: #f0c040; color: #1a1a2e; transition: all 0.2s;
+    }
+    .btn-reveal:hover { transform: scale(1.05); }
+    .btn-reveal:disabled { opacity: 0.4; transform: none; }
+    .card-counter { font-weight: 700; color: #8b949e; font-size: 0.9rem; }
+
+    /* Particles */
+    .particles {
+      position: fixed; inset: 0; pointer-events: none; z-index: 101;
+    }
+    .particle {
+      position: absolute; width: 8px; height: 8px; border-radius: 50%;
+      animation: particleFly 1s ease-out forwards;
+    }
+    @keyframes particleFly {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+    }
+    @keyframes packShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px) rotate(-2deg); }
+      40% { transform: translateX(6px) rotate(2deg); }
+      60% { transform: translateX(-4px) rotate(-1deg); }
+      80% { transform: translateX(4px) rotate(1deg); }
+    }
+    .screen-shake { animation: screenShake 0.4s ease-out; }
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0); }
+      10% { transform: translate(-6px, 3px); }
+      30% { transform: translate(6px, -2px); }
+      50% { transform: translate(-4px, -4px); }
+      70% { transform: translate(4px, 2px); }
+      90% { transform: translate(-2px, -2px); }
+    }
+
+    /* ===== COLLECTION PANEL ===== */
+    .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 14px; border: 1px solid #30363d;
+      background: #161b22; color: #8b949e; cursor: pointer; font-size: 0.78rem;
+      font-weight: 600; transition: all 0.2s;
+    }
+    .filter-btn:hover { border-color: #f0c040; color: #e6edf3; }
+    .filter-btn.active { background: #f0c040; color: #1a1a2e; border-color: #f0c040; }
+
+    .collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .collection-card {
+      background: #161b22; border-radius: 10px; border: 2px solid #30363d;
+      padding: 8px; text-align: center; position: relative; transition: transform 0.2s;
+    }
+    .collection-card:hover { transform: translateY(-3px); }
+    .collection-card.rarity-common { border-color: #374151; }
+    .collection-card.rarity-uncommon { border-color: #3d5a3d; }
+    .collection-card.rarity-rare { border-color: #f0c040; }
+    .collection-card.rarity-ultrarare { border-color: #da70d6; box-shadow: 0 0 10px rgba(218,112,214,0.3); }
+
+    .collection-card img { width: 64px; height: 64px; image-rendering: pixelated; }
+    .collection-card .c-name { font-size: 0.75rem; font-weight: 700; margin-top: 4px; }
+    .collection-card .c-count {
+      font-size: 0.7rem; color: #8b949e;
+    }
+    .new-badge {
+      position: absolute; top: -6px; right: -6px;
+      background: #ff4444; color: #fff; font-size: 0.6rem;
+      font-weight: 800; padding: 3px 7px; border-radius: 10px;
+      animation: newPulse 0.6s ease-out;
+    }
+    @keyframes newPulse {
+      0% { transform: scale(0); }
+      60% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .empty-collection {
+      grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+      color: #484f58;
+    }
+    .empty-collection .empty-icon { font-size: 4rem; margin-bottom: 12px; }
+
+    /* ===== STATS PANEL ===== */
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .stat-card {
+      background: #161b22; border-radius: 12px; border: 1px solid #30363d;
+      padding: 16px; text-align: center;
+    }
+    .stat-card.full { grid-column: 1 / -1; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: #f0c040; }
+    .stat-label { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+    .completion-bar {
+      grid-column: 1 / -1; background: #161b22; border-radius: 8px;
+      border: 1px solid #30363d; padding: 16px;
+    }
+    .bar-track {
+      height: 12px; background: #21262d; border-radius: 6px; overflow: hidden;
+      margin-top: 8px;
+    }
+    .bar-fill {
+      height: 100%; background: linear-gradient(90deg, #f0c040, #ffd700);
+      border-radius: 6px; transition: width 0.5s ease;
+    }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; font-size: 0.85rem;
+    }
+    .breakdown-dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+    .dot-common { background: #9ca3af; }
+    .dot-uncommon { background: #a8c0a8; }
+    .dot-rare { background: #f0c040; }
+    .dot-ultrarare { background: #da70d6; }
+
+    .btn-sell {
+      padding: 10px 20px; border: 1px solid #444; border-radius: 18px;
+      background: transparent; color: #e6edf3; cursor: pointer;
+      font-size: 0.8rem; font-weight: 600; transition: all 0.2s;
+    }
+    .btn-sell:hover { border-color: #f0c040; color: #f0c040; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 400px) {
+      .collection-grid { grid-template-columns: repeat(2, 1fr); }
+      .pack-art { width: 160px; height: 224px; }
+      .card-reveal { width: 200px; height: 280px; }
+      .card-front img { width: 72px; height: 72px; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Header -->
+    <div class="header">
+      <h1>⚡ Pokémon Pack Opener</h1>
+      <div class="coin-display">
+        <span class="coin-icon">🪙</span>
+        <span id="coinCount">500</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="open">📦 Open Packs</div>
+      <div class="tab" data-tab="collection">📚 Collection</div>
+      <div class="tab" data-tab="stats">📊 Stats</div>
+    </div>
+
+    <!-- Open Packs Panel -->
+    <div class="panel active" id="panel-open">
+      <div class="pack-area">
+        <div class="pack-art" id="packArt" title="Open a booster pack!">
+          <div class="pack-sleeve">
+            <span class="pokeball">🔴</span>
+            <span class="pack-label">Booster Pack</span>
+            <span class="pack-sub">×6 Cards</span>
+          </div>
+        </div>
+        <p style="color:#8b949e;font-size:0.85rem;">Tap the pack to rip it open!</p>
+        <button class="btn btn-bulk" id="btnBulk" title="Open 5 packs at once">🎁 Bulk Open ×5</button>
+        <span class="coins-needed">500 coins</span>
+      </div>
+    </div>
+
+    <!-- Collection Panel -->
+    <div class="panel" id="panel-collection">
+      <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="common">Common</button>
+        <button class="filter-btn" data-filter="uncommon">Uncommon</button>
+        <button class="filter-btn" data-filter="rare">Rare</button>
+        <button class="filter-btn" data-filter="ultrarare">Ultra Rare</button>
+      </div>
+      <div class="collection-grid" id="collectionGrid"></div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="panel" id="panel-stats">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statPacks">0</div>
+          <div class="stat-label">Packs Opened</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statCards">0</div>
+          <div class="stat-label">Total Cards</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statUnique">0</div>
+          <div class="stat-label">Unique Pokémon</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statBest">—</div>
+          <div class="stat-label">Best Pull</div>
+        </div>
+        <div class="completion-bar">
+          <div style="display:flex;justify-content:space-between;font-weight:700;">
+            <span>Collection Progress</span>
+            <span id="completionText">0/30</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="completionBar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card full" id="rarityBreakdown"></div>
+      </div>
+    </div>
+
+    <!-- Card Reveal Overlay -->
+    <div class="overlay" id="overlay">
+      <div class="card-reveal" id="cardReveal">
+        <div class="card-inner" id="cardInner">
+          <div class="card-face card-back">
+            <span class="pokeball-back">🔴</span>
+          </div>
+          <div class="card-face card-front" id="cardFront">
+            <img id="cardImg" src="" alt="Pokémon sprite">
+            <span class="card-name" id="cardName"></span>
+            <span class="card-type" id="cardType"></span>
+            <span class="card-stats" id="cardHP"></span>
+            <span class="card-attack" id="cardAttack"></span>
+            <span class="rarity-badge" id="cardRarity"></span>
+          </div>
+        </div>
+      </div>
+      <div class="reveal-controls">
+        <span class="card-counter" id="cardCounter">Card 1 of 6</span>
+        <button class="btn-reveal" id="btnReveal">Reveal Card</button>
+      </div>
+    </div>
+
+    <!-- Particles container -->
+    <div class="particles" id="particles"></div>
+  </div>
+
+  <script>
+    // ===== POKÉMON DATA (30 Pokémon, 4 rarities) =====
+    const pokemonData = [
+      // COMMON (12)
+      { id: 16,  name: "Pidgey",     type: "Normal",   hp: 40,  attack: "Gust",        damage: 20,  rarity: "common" },
+      { id: 19,  name: "Rattata",    type: "Normal",   hp: 30,  attack: "Quick Attack", damage: 20,  rarity: "common" },
+      { id: 10,  name: "Caterpie",   type: "Normal",   hp: 45,  attack: "Tackle",       damage: 15,  rarity: "common" },
+      { id: 13,  name: "Weedle",     type: "Normal",   hp: 40,  attack: "Poison Sting", damage: 25,  rarity: "common" },
+      { id: 41,  name: "Zubat",      type: "Psychic",  hp: 40,  attack: "Leech Life",   damage: 25,  rarity: "common" },
+      { id: 74,  name: "Geodude",    type: "Normal",   hp: 40,  attack: "Rock Throw",   damage: 30,  rarity: "common" },
+      { id: 50,  name: "Diglett",    type: "Normal",   hp: 30,  attack: "Dig",          damage: 30,  rarity: "common" },
+      { id: 52,  name: "Meowth",     type: "Normal",   hp: 40,  attack: "Scratch",      damage: 25,  rarity: "common" },
+      { id: 54,  name: "Psyduck",    type: "Water",    hp: 50,  attack: "Water Gun",    damage: 25,  rarity: "common" },
+      { id: 21,  name: "Spearow",    type: "Normal",   hp: 40,  attack: "Peck",         damage: 25,  rarity: "common" },
+      { id: 27,  name: "Sandshrew",  type: "Normal",   hp: 50,  attack: "Slash",        damage: 30,  rarity: "common" },
+      { id: 43,  name: "Oddish",     type: "Grass",    hp: 45,  attack: "Absorb",       damage: 20,  rarity: "common" },
+
+      // UNCOMMON (8)
+      { id: 25,  name: "Pikachu",    type: "Electric", hp: 60,  attack: "Thunderbolt",  damage: 55,  rarity: "uncommon" },
+      { id: 133, name: "Eevee",      type: "Normal",   hp: 55,  attack: "Quick Attack", damage: 40,  rarity: "uncommon" },
+      { id: 1,   name: "Bulbasaur",  type: "Grass",    hp: 60,  attack: "Vine Whip",    damage: 45,  rarity: "uncommon" },
+      { id: 4,   name: "Charmander", type: "Fire",     hp: 55,  attack: "Ember",        damage: 45,  rarity: "uncommon" },
+      { id: 7,   name: "Squirtle",   type: "Water",    hp: 55,  attack: "Bubble Beam",  damage: 45,  rarity: "uncommon" },
+      { id: 37,  name: "Vulpix",     type: "Fire",     hp: 50,  attack: "Fire Spin",    damage: 50,  rarity: "uncommon" },
+      { id: 58,  name: "Growlithe",  type: "Fire",     hp: 55,  attack: "Flame Wheel",  damage: 50,  rarity: "uncommon" },
+      { id: 63,  name: "Abra",       type: "Psychic",  hp: 40,  attack: "Confusion",    damage: 50,  rarity: "uncommon" },
+
+      // RARE (7)
+      { id: 6,   name: "Charizard",  type: "Fire",     hp: 120, attack: "Fire Blast",   damage: 90,  rarity: "rare" },
+      { id: 9,   name: "Blastoise",  type: "Water",    hp: 110, attack: "Hydro Pump",   damage: 85,  rarity: "rare" },
+      { id: 3,   name: "Venusaur",   type: "Grass",    hp: 115, attack: "Solar Beam",   damage: 90,  rarity: "rare" },
+      { id: 131, name: "Lapras",     type: "Water",    hp: 130, attack: "Ice Beam",     damage: 80,  rarity: "rare" },
+      { id: 130, name: "Gyarados",   type: "Water",    hp: 110, attack: "Dragon Rage",  damage: 85,  rarity: "rare" },
+      { id: 143, name: "Snorlax",    type: "Normal",   hp: 160, attack: "Body Slam",    damage: 80,  rarity: "rare" },
+      { id: 149, name: "Dragonite",  type: "Normal",   hp: 120, attack: "Hyper Beam",   damage: 95,  rarity: "rare" },
+
+      // ULTRA RARE (3)
+      { id: 150, name: "Mewtwo",     type: "Psychic",  hp: 150, attack: "Psystrike",    damage: 110, rarity: "ultrarare" },
+      { id: 151, name: "Mew",        type: "Psychic",  hp: 130, attack: "Psychic",      damage: 100, rarity: "ultrarare" },
+      { id: 144, name: "Articuno",   type: "Water",    hp: 140, attack: "Blizzard",     damage: 105, rarity: "ultrarare" },
+    ];
+
+    const PACK_COST = 100;
+    const PACK_SIZE = 6;
+
+    // ===== STATE =====
+    let state = {
+      coins: 500,
+      collection: {},       // { pokemonId: count }
+      packsOpened: 0,
+      rarityBreakdown: { common: 0, uncommon: 0, rare: 0, ultrarare: 0 },
+    };
+
+    // Track which cards are "new" this session (for NEW badge display)
+    let newlyPulledThisSession = new Set();
+
+    // Reveal queue
+    let revealQueue = [];
+    let revealIndex = 0;
+
+    // ===== LOCAL STORAGE =====
+    function saveState() {
+      const toSave = {
+        ...state,
+        collection: state.collection,
+      };
+      localStorage.setItem('pokemon-pack-state', JSON.stringify(toSave));
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem('pokemon-pack-state');
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw);
+          state.coins = saved.coins ?? 500;
+          state.collection = saved.collection ?? {};
+          state.packsOpened = saved.packsOpened ?? 0;
+          state.rarityBreakdown = saved.rarityBreakdown ?? { common: 0, uncommon: 0, rare: 0, ultrarare: 0 };
+        } catch (e) {
+          console.warn('Failed to load saved state, using defaults.');
+        }
+      }
+    }
+
+    // ===== DOM REFS =====
+    const $ = (sel) => document.querySelector(sel);
+    const coinEl = $('#coinCount');
+    const packArt = $('#packArt');
+    const btnBulk = $('#btnBulk');
+    const overlay = $('#overlay');
+    const cardInner = $('#cardInner');
+    const cardFront = $('#cardFront');
+    const cardImg = $('#cardImg');
+    const cardName = $('#cardName');
+    const cardType = $('#cardType');
+    const cardHP = $('#cardHP');
+    const cardAttack = $('#cardAttack');
+    const cardRarity = $('#cardRarity');
+    const cardCounter = $('#cardCounter');
+    const btnReveal = $('#btnReveal');
+    const collectionGrid = $('#collectionGrid');
+    const particlesEl = $('#particles');
+    const app = $('#app');
+
+    // ===== UTILS =====
+    function getSpriteUrl(pokemonId) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokemonId}.gif`;
+    }
+    // Fallback to static sprite since animated ones sometimes fail
+    function getStaticSpriteUrl(pokemonId) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // ===== PACK GENERATION =====
+    function generatePack() {
+      const commons = pokemonData.filter(p => p.rarity === 'common');
+      const uncommons = pokemonData.filter(p => p.rarity === 'uncommon');
+      const rares = pokemonData.filter(p => p.rarity === 'rare');
+      const ultraRares = pokemonData.filter(p => p.rarity === 'ultrarare');
+
+      const pack = [];
+
+      // 4 commons
+      const shuffledCommons = shuffle(commons);
+      for (let i = 0; i < 4; i++) {
+        pack.push({ ...shuffledCommons[i % shuffledCommons.length], slot: 'common' });
+      }
+
+      // 1 uncommon
+      const shuffledUncommons = shuffle(uncommons);
+      pack.push({ ...shuffledUncommons[0], slot: 'uncommon' });
+
+      // 1 rare slot — 5% chance of ultra rare
+      if (Math.random() < 0.05) {
+        const shuffledUR = shuffle(ultraRares);
+        pack.push({ ...shuffledUR[0], slot: 'ultrarare' });
+      } else {
+        const shuffledRares = shuffle(rares);
+        pack.push({ ...shuffledRares[0], slot: 'rare' });
+      }
+
+      // Shuffle the first 5, keep rare slot as last card (always last for suspense)
+      const firstFive = shuffle(pack.slice(0, 5));
+      return [...firstFive, pack[5]];
+    }
+
+    // ===== PARTICLE EFFECTS =====
+    function spawnParticles(x, y, count, color) {
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = randInt(40, 120);
+        particle.style.cssText = `
+          left: ${x}px; top: ${y}px;
+          width: ${randInt(4, 10)}px; height: ${randInt(4, 10)}px;
+          background: ${color};
+          --dx: ${Math.cos(angle) * dist}px;
+          --dy: ${Math.sin(angle) * dist}px;
+          animation-duration: ${0.6 + Math.random() * 0.8}s;
+        `;
+        particlesEl.appendChild(particle);
+        setTimeout(() => particle.remove(), 1500);
+      }
+    }
+
+    function spawnRarityParticles(rarity) {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      if (rarity === 'ultrarare') {
+        spawnParticles(centerX, centerY, 30, '#da70d6');
+        spawnParticles(centerX, centerY, 20, '#ffd93d');
+        spawnParticles(centerX, centerY, 15, '#4d96ff');
+      } else if (rarity === 'rare') {
+        spawnParticles(centerX, centerY, 20, '#f0c040');
+      } else if (rarity === 'uncommon') {
+        spawnParticles(centerX, centerY, 10, '#a8c0a8');
+      }
+    }
+
+    function triggerScreenShake() {
+      app.classList.add('screen-shake');
+      setTimeout(() => app.classList.remove('screen-shake'), 400);
+    }
+
+    // ===== CARD REVEAL =====
+    function setupCardFront(card) {
+      cardImg.src = getStaticSpriteUrl(card.id);
+      // Fallback if GIF fails
+      cardImg.onerror = () => { cardImg.src = getStaticSpriteUrl(card.id); };
+      cardName.textContent = card.name;
+      cardType.textContent = card.type;
+      cardType.className = 'card-type type-' + card.type;
+      cardHP.textContent = `HP ${card.hp}`;
+      cardAttack.textContent = `${card.attack} — ${card.damage} dmg`;
+
+      // Apply rarity classes
+      cardFront.className = 'card-face card-front rarity-' + card.rarity;
+      const rarityDisplay = card.rarity === 'ultrarare' ? '★ Ultra Rare' :
+                            card.rarity === 'rare' ? '★ Rare' :
+                            card.rarity === 'uncommon' ? 'Uncommon' : 'Common';
+      cardRarity.textContent = rarityDisplay;
+      cardRarity.className = 'rarity-badge badge-' + card.rarity;
+    }
+
+    function revealNextCard() {
+      if (revealIndex >= revealQueue.length) {
+        // All cards revealed
+        overlay.classList.remove('active');
+        revealQueue = [];
+        revealIndex = 0;
+        updateUI();
+        return;
+      }
+
+      const card = revealQueue[revealIndex];
+      const isLastCard = revealIndex === revealQueue.length - 1;
+
+      setupCardFront(card);
+      cardCounter.textContent = `Card ${revealIndex + 1} of ${revealQueue.length}`;
+
+      // Reset flip
+      cardInner.classList.remove('flipped');
+
+      // Delay slightly so the reset is visible, then flip
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cardInner.classList.add('flipped');
+
+          // Add to collection
+          if (!state.collection[card.id]) {
+            state.collection[card.id] = 0;
+            newlyPulledThisSession.add(card.id);
+          }
+          state.collection[card.id]++;
+          state.rarityBreakdown[card.rarity] = (state.rarityBreakdown[card.rarity] || 0) + 1;
+
+          // Particles for rare+
+          if (card.rarity === 'ultrarare' || card.rarity === 'rare') {
+            setTimeout(() => {
+              spawnRarityParticles(card.rarity);
+              if (card.rarity === 'ultrarare') triggerScreenShake();
+            }, 400);
+          }
+        });
+      });
+
+      revealIndex++;
+    }
+
+    function startReveal(pack) {
+      revealQueue = pack;
+      revealIndex = 0;
+      overlay.classList.add('active');
+      revealNextCard();
+    }
+
+    // ===== UI UPDATES =====
+    function updateUI() {
+      coinEl.textContent = state.coins;
+      btnBulk.disabled = state.coins < PACK_COST * 5;
+      renderCollection();
+      renderStats();
+      saveState();
+    }
+
+    function getCollectedCardIds() {
+      return Object.keys(state.collection).map(Number);
+    }
+
+    function renderCollection() {
+      const filter = $('#filterBar .filter-btn.active')?.dataset?.filter || 'all';
+      const ids = getCollectedCardIds();
+
+      if (ids.length === 0) {
+        collectionGrid.innerHTML = `
+          <div class="empty-collection">
+            <div class="empty-icon">📦</div>
+            <p>No cards yet! Open some booster packs.</p>
+          </div>`;
+        return;
+      }
+
+      let html = '';
+      for (const id of ids) {
+        const pokemon = pokemonData.find(p => p.id === id);
+        if (!pokemon) continue;
+        if (filter !== 'all' && pokemon.rarity !== filter) continue;
+
+        const count = state.collection[id];
+        const isNew = newlyPulledThisSession.has(id);
+
+        html += `
+          <div class="collection-card rarity-${pokemon.rarity}">
+            ${isNew ? '<span class="new-badge">NEW!</span>' : ''}
+            <img src="${getStaticSpriteUrl(pokemon.id)}" alt="${pokemon.name}" loading="lazy"
+                 onerror="this.src='${getStaticSpriteUrl(pokemon.id)}'">
+            <div class="c-name">${pokemon.name}</div>
+            <div class="c-count">×${count}</div>
+          </div>`;
+      }
+      collectionGrid.innerHTML = html;
+    }
+
+    function renderStats() {
+      const collected = getCollectedCardIds().length;
+      const total = pokemonData.length;
+      const pct = Math.round((collected / total) * 100);
+
+      $('#statPacks').textContent = state.packsOpened;
+      const totalCards = Object.values(state.collection).reduce((a, b) => a + b, 0);
+      $('#statCards').textContent = totalCards;
+      $('#statUnique').textContent = collected;
+      $('#statBest').textContent = state.rarityBreakdown.ultrarare > 0 ? 'Ultra Rare!' : '—';
+      $('#completionText').textContent = `${collected}/${total}`;
+      $('#completionBar').style.width = pct + '%';
+
+      const rb = state.rarityBreakdown;
+      $('#rarityBreakdown').innerHTML = `
+        <div style="font-weight:700;margin-bottom:8px;">Rarity Breakdown</div>
+        <div class="breakdown-row"><span><span class="breakdown-dot dot-common"></span>Common</span><span>${rb.common}</span></div>
+        <div class="breakdown-row"><span><span class="breakdown-dot dot-uncommon"></span>Uncommon</span><span>${rb.uncommon}</span></div>
+        <div class="breakdown-row"><span><span class="breakdown-dot dot-rare"></span>Rare</span><span>${rb.rare}</span></div>
+        <div class="breakdown-row"><span><span class="breakdown-dot dot-ultrarare"></span>Ultra Rare</span><span>${rb.ultrarare}</span></div>
+      `;
+    }
+
+    // ===== ACTIONS =====
+    function openSinglePack() {
+      if (state.coins < PACK_COST) return;
+      state.coins -= PACK_COST;
+      state.packsOpened++;
+      const pack = generatePack();
+      startReveal(pack);
+      updateUI();
+    }
+
+    function openBulkPacks() {
+      if (state.coins < PACK_COST * 5) return;
+      state.coins -= PACK_COST * 5;
+
+      // Generate all 30 cards (5 packs × 6)
+      const allCards = [];
+      for (let i = 0; i < 5; i++) {
+        state.packsOpened++;
+        allCards.push(...generatePack());
+      }
+
+      // Shuffle the entire batch except keep all rares at the end
+      const regulars = allCards.filter(c => c.slot === 'common' || c.slot === 'uncommon');
+      const rareSlots = allCards.filter(c => c.slot === 'rare' || c.slot === 'ultrarare');
+      const shuffledRegulars = shuffle(regulars);
+      const grouped = [...shuffledRegulars, ...rareSlots];
+
+      startReveal(grouped);
+      updateUI();
+    }
+
+    // ===== EVENT LISTENERS =====
+    packArt.addEventListener('click', () => {
+      if (state.coins < PACK_COST) {
+        packArt.classList.add('ripping');
+        setTimeout(() => packArt.classList.remove('ripping'), 400);
+        return;
+      }
+      openSinglePack();
+    });
+
+    btnBulk.addEventListener('click', () => {
+      if (state.coins >= PACK_COST * 5) {
+        openBulkPacks();
+      }
+    });
+
+    btnReveal.addEventListener('click', () => {
+      revealNextCard();
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        $('#panel-' + tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'collection') renderCollection();
+        if (tab.dataset.tab === 'stats') renderStats();
+      });
+    });
+
+    // Filter buttons
+    $('#filterBar').addEventListener('click', (e) => {
+      if (e.target.classList.contains('filter-btn')) {
+        document.querySelectorAll('#filterBar .filter-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        renderCollection();
+      }
+    });
+
+    // ===== INIT =====
+    function init() {
+      loadState();
+      updateUI();
+    }
+
+    init();
+  </script>
+</body>
+</html>

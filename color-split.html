@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Four Color Split</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      gap: 12px;
+      background: #16213e;
+      border-bottom: 2px solid #0f3460;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+      background: #e94560;
+      color: white;
+      letter-spacing: 0.5px;
+    }
+
+    button:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.5);
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    .grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+
+    .quadrant {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.15s;
+      border: 2px solid #1a1a2e;
+      user-select: none;
+    }
+
+    .quadrant:hover {
+      filter: brightness(1.15);
+      transform: scale(1.01);
+    }
+
+    .quadrant:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button id="fillAllBtn">🎨 Fill All Random</button>
+  </div>
+
+  <div class="grid">
+    <div class="quadrant" id="q1" data-quadrant="1"></div>
+    <div class="quadrant" id="q2" data-quadrant="2"></div>
+    <div class="quadrant" id="q3" data-quadrant="3"></div>
+    <div class="quadrant" id="q4" data-quadrant="4"></div>
+  </div>
+
+  <script>
+    const quadrants = document.querySelectorAll('.quadrant');
+    const fillAllBtn = document.getElementById('fillAllBtn');
+
+    function randomColor() {
+      const r = Math.floor(Math.random() * 256);
+      const g = Math.floor(Math.random() * 256);
+      const b = Math.floor(Math.random() * 256);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function setColor(el) {
+      const color = randomColor();
+      el.style.backgroundColor = color;
+      el.textContent = color;
+    }
+
+    // Fill all four on button press
+    fillAllBtn.addEventListener('click', () => {
+      quadrants.forEach(q => setColor(q));
+    });
+
+    // Click individual rectangle to change only that one
+    quadrants.forEach(q => {
+      q.addEventListener('click', () => setColor(q));
+    });
+
+    // Start with a nice default palette
+    const defaults = ['#e94560', '#0f3460', '#533483', '#1a1a2e'];
+    quadrants.forEach((q, i) => {
+      q.style.backgroundColor = defaults[i];
+      q.textContent = defaults[i];
+    });
+  </script>
+
+</body>
+</html>
